@@ -48,11 +48,11 @@ defmodule SA.Commit do
     Gets nodes where latest commit for `filename` is stored.
     """
     def get_latest_nodes(dict, filename) do
-        tuple = Agent.get(dict, fn {map, _} ->
+        Agent.get(dict, fn {map, _} ->
             Stream.filter(map, fn {{name, _}, _} -> name == filename end )
             |> Enum.reduce({{:error, -1}, []}, &compare_commits(&1, &2))
         end)
-        elem(tuple, 1)
+        |> elem 1
     end
 
     @doc """
