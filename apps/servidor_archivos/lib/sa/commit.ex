@@ -52,7 +52,7 @@ defmodule SA.Commit do
             Stream.filter(map, fn {{name, _}, _} -> name == filename end )
             |> Enum.reduce({{:error, -1}, []}, &compare_commits(&1, &2))
         end)
-        |> elem 1
+        |> elem(1)
     end
 
     @doc """
