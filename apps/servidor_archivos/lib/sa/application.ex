@@ -3,7 +3,7 @@ defmodule SA.Application do
 
   def start(_type, _args) do
     children = [
-      {SA.CommitsDict, name: SMV.CommitsDict}
+      {SA.Commit, name: SA.Commit}
     ]
 
     opts = [strategy: :one_for_one, name: SA.Supervisor]
