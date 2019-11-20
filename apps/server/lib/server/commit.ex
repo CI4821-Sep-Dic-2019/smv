@@ -1,4 +1,4 @@
-defmodule SA.Commit do
+defmodule Server.Commit do
     @moduledoc """
     Module for managing a dictionary of {filename, timestamp} -> nodes.
     """
@@ -32,7 +32,7 @@ defmodule SA.Commit do
     @doc """
     Add `machine` as a node where commit is stored and its `message`.
     """
-    def add(dict, %SA.Commit{filename: filename, timestamp: timestamp, message: message}, machine) 
+    def add(dict, %Server.Commit{filename: filename, timestamp: timestamp, message: message}, machine) 
     when is_atom(machine) and is_integer(timestamp) and is_binary(filename) and is_binary(message) do
 
         Agent.update(dict, fn {nodes_map, msg_map} -> 
@@ -64,7 +64,7 @@ defmodule SA.Commit do
             Stream.filter(map, fn {{name, _}, _} -> name == filename end )
             |> Enum.reduce({{:error, -1}, []}, &compare_commits(&1, &2) )
         end)
-        %SA.Commit {
+        %Server.Commit {
             filename: filename,
             timestamp: timestamp,
             message: message

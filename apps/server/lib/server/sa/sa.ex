@@ -1,4 +1,7 @@
 defmodule SA do
+  @moduledoc """
+  Storage Server or "Servidor de Almacenamiento".
+  """
 
   @doc """
   Gets the content of a file's commit.
@@ -21,3 +24,4 @@ defmodule SA do
   end
 
 end
+  
