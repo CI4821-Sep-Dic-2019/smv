@@ -27,12 +27,17 @@ defmodule Server.Commit do
     def get_filename_commits(commits, filename)
     when is_binary(filename) do
         Agent.get(commits, &Map.get(elem(&1, 1), filename))
+        |> Enum.map(fn {timestamp, message} -> %Server.Commit{
+            filename: filename,
+            timestamp: timestamp,
+            message: message}
+        end)
     end
 
     @doc """
     Add `machine` as a node where commit is stored and its `message`.
     """
-    def add_machine(commits, %Server.Commit{filename: filename, timestamp: timestamp, message: message}, machine)
+    def add_node(commits, %Server.Commit{filename: filename, timestamp: timestamp, message: message}, machine)
     when is_atom(machine) and is_integer(timestamp) and is_binary(filename) and is_binary(message) do
         Agent.update(commits, fn {nodes_map, commits_msg} ->
             {
@@ -52,7 +57,7 @@ defmodule Server.Commit do
     @doc """
     Add several machines where commit is stored and its `message`.
     """
-    def add_machines(commits, %Server.Commit{filename: filename, timestamp: timestamp, message: message}, machines)
+    def add_nodes(commits, %Server.Commit{filename: filename, timestamp: timestamp, message: message}, machines)
     when is_integer(timestamp) and is_binary(filename) and is_binary(message) do
         Agent.update(commits, fn {nodes_map, commits_msg} ->
             {
@@ -82,7 +87,7 @@ defmodule Server.Commit do
     def get_latest_commit(commits, filename)
     when is_binary(filename) do
         case get_filename_commits(commits, filename) do
-            [{timestamp, message} | _ ] -> %Server.Commit {
+            [%{filename: _, timestamp: timestamp, message: message} | _ ] -> %Server.Commit {
                 filename: filename,
                 timestamp: timestamp,
                 message: message
@@ -100,14 +105,7 @@ defmodule Server.Commit do
     """
     def get_latest_commits(commits, filename, n)
     when is_binary(filename) and is_integer(n) do
-        commits_inf = Enum.take(get_filename_commits(commits, filename), n)
-        Enum.map(commits_inf, fn {timestamp, message} ->
-                %Server.Commit{
-                filename: filename,
-                timestamp: timestamp,
-                message: message
-            } end
-        )
+        Enum.take(get_filename_commits(commits, filename), n)
     end
 
     defp insert_timestamp_message(list, timestamp, message) do
