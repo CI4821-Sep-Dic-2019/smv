@@ -36,7 +36,9 @@ defmodule Server.Commit do
     when is_atom(machine) and is_integer(timestamp) and is_binary(filename) and is_binary(message) do
         Agent.update(commits, fn {nodes_map, commits_msg} ->
             {
-                Map.update(nodes_map, {filename, timestamp}, [machine], &[machine | &1]),
+                Map.update(nodes_map, {filename, timestamp}, [machine], fn machines ->
+                    if machine in machines do machines else [machine | machines] end
+                end ),
                 Map.update(
                     commits_msg,
                     filename,
@@ -44,7 +46,7 @@ defmodule Server.Commit do
                     &insert_timestamp_message(&1, timestamp, message)
                 )
             }
-        end)
+        end )
     end
 
     @doc """
