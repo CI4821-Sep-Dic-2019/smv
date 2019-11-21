@@ -2,29 +2,81 @@ defmodule ServerTest.Commit do
     use ExUnit.Case, async: true
 
     setup do
-        dict = start_supervised!(Server.Commit)
-        m1 = :foo@computer
-        m2 = :bar@computer
-        m3 = :baz@matrix
-        %{dict: dict, machines: [m1, m2, m3]}
+        commits = start_supervised!(Server.Commit)
+        %{commits: commits}
     end
 
-    test "add and fetch commits' info", %{dict: dict, machines: [m1, m2, m3]} do
-        commit = %Server.Commit{
-            filename: "test_files/file.c", 
-            timestamp: 124, 
-            message: "test"
+    test "add and fetch commits' info", %{commits: commits} do
+        m1 = :foo@m1
+        m2 = :bar@m2
+        m3 = :baz@m3
+        m4 = :rubmary@m4
+
+        commit_list = for i <- 0..3, j <- 0..4, do: %Server.Commit{
+            filename: "file #{i}",
+            timestamp: rem(j+2, 5)*10+i,
+            message: "file #{i} - timestamp #{rem(j+2, 5)*10+i}"
         }
 
-        Server.Commit.add(dict, commit, m1)
-        Server.Commit.add(dict, commit, m2)
-        Server.Commit.add(dict, %{commit | :timestamp => 125}, m3)
+        commit_messages = for i <- 0..3, do: {
+            "file #{i}",
+            (for j <- 0..4, do: {(4-j)*10+i,  "file #{i} - timestamp #{(4-j)*10+i}"})
+        }
 
-        assert Server.Commit.get_nodes(dict, {commit.filename, commit.timestamp}) == [m2, m1]
-        assert Server.Commit.get_latest_nodes(dict, commit.filename) == [m3]
+        machine_list = [
+            [m1, m3],
+            [m1, m2],
+            [m2, m3],
+            [m2, m4],
+            [m4, m1],
+            [m1, m2, m3],
+            [m1, m2, m4],
+            [m2, m3, m4],
+            [m1, m3, m4],
+            [m1, m2, m3],
+            [m3, m4],
+            [m3, m2],
+            [m1, m2],
+            [m2, m3],
+            [m2, m3, m4],
+            [m1, m3, m4],
+            [m2, m4],
+            [m1, m2, m3],
+            [m4],
+            [m3]
+        ]
 
-        assert Server.Commit.get_message(dict, {commit.filename, commit.timestamp}) == commit.message
+        zipped = List.zip([commit_list, machine_list])
 
-        assert Server.Commit.get_latest_commit(dict, commit.filename) == %{commit | :timestamp => 125}
+        for {commit, machines} <- zipped, do:
+            Server.Commit.add_machines(commits, commit, machines)
+
+        for {commit, machines} <- zipped, do:
+            assert Server.Commit.get_nodes(commits, commit.filename, commit.timestamp) == machines
+
+        for {filename, messages} <- commit_messages, do:
+            assert Server.Commit.get_filename_commits(commits, filename) == messages
+
+        for {filename, [{timestamp, message} | _]} <- commit_messages, do:
+            assert Server.Commit.get_latest_commit(commits, filename) == %Server.Commit{
+                filename: filename,
+                timestamp: timestamp,
+                message: message
+            }
+
+        for {n, {filename, time_messages}} <- List.zip([[1, 2, 3, 4], commit_messages]), do:
+            assert Server.Commit.get_latest_commits(commits, filename, n) ==
+                Enum.map(Enum.take(time_messages, n), fn {timestamp, message} ->
+                    %Server.Commit {
+                        filename: filename,
+                        timestamp: timestamp,
+                        message: message
+                    }
+                end
+        )
+
+        # Agregar tests cuando se agregan un commit repetido (con el mismo timestamp) y una maquina repetida
+        # new_machine = [m1, m2, m3, m4, m4, m3, m2, m1, m1, m2, m2, m4, m3, m2, m1, m2, m3, m1, m4]
+
     end
 end
