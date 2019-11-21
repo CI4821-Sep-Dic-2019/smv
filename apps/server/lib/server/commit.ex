@@ -16,7 +16,7 @@ defmodule Server.Commit do
     @doc """
     Gets a list of nodes of `{filename, timestamp}`.
     """
-    def get_nodes(commits, {filename, timestamp})
+    def get_nodes(commits, filename, timestamp)
     when is_integer(timestamp) and is_binary(filename) do
         Agent.get(commits, &Map.get(elem(&1, 0), {filename, timestamp}))
     end
@@ -26,13 +26,13 @@ defmodule Server.Commit do
     """
     def get_filename_commits(commits, filename)
     when is_binary(filename) do
-        Agent.get(commits, &Map.get(elem(&1, 0), filename))
+        Agent.get(commits, &Map.get(elem(&1, 1), filename))
     end
 
     @doc """
     Add `machine` as a node where commit is stored and its `message`.
     """
-    def add(commits, %Server.Commit{filename: filename, timestamp: timestamp, message: message}, machine)
+    def add_machine(commits, %Server.Commit{filename: filename, timestamp: timestamp, message: message}, machine)
     when is_atom(machine) and is_integer(timestamp) and is_binary(filename) and is_binary(message) do
         Agent.update(commits, fn {nodes_map, commits_msg} ->
             {
@@ -50,7 +50,7 @@ defmodule Server.Commit do
     @doc """
     Add several machines where commit is stored and its `message`.
     """
-    def add(commits, %Server.Commit{filename: filename, timestamp: timestamp, message: message}, machines)
+    def add_machines(commits, %Server.Commit{filename: filename, timestamp: timestamp, message: message}, machines)
     when is_integer(timestamp) and is_binary(filename) and is_binary(message) do
         Agent.update(commits, fn {nodes_map, commits_msg} ->
             {
@@ -71,7 +71,7 @@ defmodule Server.Commit do
     def get_nodes_latest_commits(commits, filename)
     when is_binary(filename) do
         commit = get_latest_commit(commits, filename)
-        get_nodes(commits, {commit.filename, commit.timestamp})
+        get_nodes(commits, commit.filename, commit.timestamp)
     end
 
     @doc """
@@ -99,7 +99,7 @@ defmodule Server.Commit do
     def get_latest_commits(commits, filename, n)
     when is_binary(filename) and is_integer(n) do
         commits_inf = Enum.take(get_filename_commits(commits, filename), n)
-        Enum.map(commits_inf, fn timestamp, message ->
+        Enum.map(commits_inf, fn {timestamp, message} ->
                 %Server.Commit{
                 filename: filename,
                 timestamp: timestamp,
@@ -111,10 +111,10 @@ defmodule Server.Commit do
     defp insert_timestamp_message(list, timestamp, message) do
         case list do
             [] -> [{timestamp, message}]
-            [{t0, m0} | tail] -> if t0 < timestamp do
-                [{timestamp, message} | list]
-            else
-                [{t0, m0} | insert_timestamp_message(tail, timestamp, message)]
+            [{t0, m0} | tail] -> cond do
+                t0 <  timestamp -> [{timestamp, message} | list]
+                t0 >  timestamp -> [{t0, m0} | insert_timestamp_message(tail, timestamp, message)]
+                t0 == timestamp -> list
             end
         end
     end
