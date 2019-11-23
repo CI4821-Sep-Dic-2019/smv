@@ -22,7 +22,11 @@ defmodule ServerTest.Commit do
         assert Server.Commit.get_nodes(commits, commit.filename, commit.timestamp) == [m1]
 
         # Test `commit` is the one and only commit.
-        assert Server.Commit.get_filename_commits(commits, commit.filename) == [commit]
+        assert Server.Commit.get_commits(commits, commit.filename) == {:ok, [commit]}
+    end
+
+    test "Commit not found", %{commits: commits} do
+        assert Server.Commit.get_nodes_latest_commits(commits, "abc.abc") == {:error, :not_found}
     end
 
     test "add many commits to the same file", %{commits: commits, machines: [m1 | _]} do
@@ -47,8 +51,8 @@ defmodule ServerTest.Commit do
         # Add each commit to `m1`.
         Enum.each(commit_list, &Server.Commit.add_node(commits, &1, m1))
 
-        assert Server.Commit.get_latest_commit(commits, "file1.test") == Enum.at(commit_list, 1)
-        assert Server.Commit.get_filename_commits(commits, "file1.test") == [c2, c3, c1]
+        assert Server.Commit.get_latest_commit(commits, "file1.test") == {:ok, Enum.at(commit_list, 1)}
+        assert Server.Commit.get_commits(commits, "file1.test") == {:ok, [c2, c3, c1]}
     end
 
     test "add same commit in different nodes", %{commits: commits, machines: machines} do
@@ -93,8 +97,8 @@ defmodule ServerTest.Commit do
         m4 = Enum.at(machines, 3)
         Server.Commit.add_node(commits, Enum.at(commit_list, 1), m4)
 
-        assert Server.Commit.get_filename_commits(commits, "file1.test") == [c2, c3, c1]
-        assert Server.Commit.get_latest_commit(commits, "file1.test") == Enum.at(commit_list, 1)
+        assert Server.Commit.get_commits(commits, "file1.test") == {:ok, [c2, c3, c1]}
+        assert Server.Commit.get_latest_commit(commits, "file1.test") == {:ok, Enum.at(commit_list, 1)}
         assert Server.Commit.get_nodes_latest_commits(commits, "file1.test") == [m4, m2]
 
     end
@@ -148,20 +152,24 @@ defmodule ServerTest.Commit do
             assert Server.Commit.get_nodes(commits, commit.filename, commit.timestamp) == machines
 
         for {filename, messages} <- commit_messages do
-            Server.Commit.get_filename_commits(commits, filename)
+            Server.Commit.get_commits(commits, filename)
+            |> elem(1)
             |> Enum.map(fn c -> {c.timestamp, c.message} end)
             |> (fn c -> assert( c == messages ) end).()
         end
 
-        for {filename, [{timestamp, message} | _]} <- commit_messages, do:
-            assert Server.Commit.get_latest_commit(commits, filename) == %Server.Commit{
-                filename: filename,
-                timestamp: timestamp,
-                message: message
+        for {filename, [{timestamp, message} | _]} <- commit_messages do
+            assert Server.Commit.get_latest_commit(commits, filename) == {:ok, 
+                %Server.Commit{
+                    filename: filename,
+                    timestamp: timestamp,
+                    message: message
+                }
             }
+        end
 
         for {n, {filename, time_messages}} <- List.zip([[1, 2, 3, 4], commit_messages]) do
-            assert Server.Commit.get_latest_commits(commits, filename, n) ==
+            assert Server.Commit.get_latest_commits(commits, filename, n) == {:ok,
                 Enum.map(Enum.take(time_messages, n), fn {timestamp, message} ->
                     %Server.Commit {
                         filename: filename,
@@ -169,6 +177,7 @@ defmodule ServerTest.Commit do
                         message: message
                     }
                 end)
+            }
         end
 
         # Agregar tests cuando se agregan un commit repetido (con el mismo timestamp) y una maquina repetida

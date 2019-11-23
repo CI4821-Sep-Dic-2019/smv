@@ -15,23 +15,15 @@ defmodule Server.Commit do
 
     @doc """
     Gets a list of nodes of `{filename, timestamp}`.
+    Returns `{:error, :not_found}` if there are not commits to this `filename`.
     """
     def get_nodes(commits, filename, timestamp)
     when is_integer(timestamp) and is_binary(filename) do
-        Agent.get(commits, &Map.get(elem(&1, 0), {filename, timestamp}))
-    end
-
-    @doc """
-    Gets timestamps and messages of commits with `filename`.
-    """
-    def get_filename_commits(commits, filename)
-    when is_binary(filename) do
-        Agent.get(commits, &Map.get(elem(&1, 1), filename))
-        |> Enum.map(fn {timestamp, message} -> %Server.Commit{
-            filename: filename,
-            timestamp: timestamp,
-            message: message}
-        end)
+        Agent.get(
+            commits, 
+            &Map.get(elem(&1, 0), 
+            {filename, timestamp}, 
+            {:error, :not_found}))
     end
 
     @doc """
@@ -77,8 +69,35 @@ defmodule Server.Commit do
     """
     def get_nodes_latest_commits(commits, filename)
     when is_binary(filename) do
-        commit = get_latest_commit(commits, filename)
-        get_nodes(commits, commit.filename, commit.timestamp)
+        with    {:ok, commit} <- get_latest_commit(commits, filename),
+                do: get_nodes(commits, commit.filename, commit.timestamp)
+    end
+
+    
+    # Gets a stream of the commits of `filename`.
+    defp get_commits_stream(commits, filename) do
+        Agent.get(commits, &Map.get(elem(&1, 1), filename, []))
+        |> Stream.map(fn {timestamp, message} -> %Server.Commit{
+            filename: filename,
+            timestamp: timestamp,
+            message: message}
+        end)
+    end
+
+    @doc """
+    Gets timestamps and messages of commits with `filename`.
+
+    Returns `{:error, :not_found}` if there are not commits to this `filename`,
+    otherwise returns `{:ok, results}`.
+    """
+    def get_commits(commits, filename)
+    when is_binary(filename) do
+        results = get_commits_stream(commits, filename)
+        |> Enum.to_list()
+        case results do
+            [] -> {:error, :not_found}
+            _ -> {:ok, results}
+        end
     end
 
     @doc """
@@ -86,17 +105,8 @@ defmodule Server.Commit do
     """
     def get_latest_commit(commits, filename)
     when is_binary(filename) do
-        case get_filename_commits(commits, filename) do
-            [%{filename: _, timestamp: timestamp, message: message} | _ ] -> %Server.Commit {
-                filename: filename,
-                timestamp: timestamp,
-                message: message
-            }
-            [] -> %Server.Commit {
-                filename: filename,
-                timestamp: -1,
-                message: :error
-            }
+        with {:ok, [commit | _]} <- get_latest_commits(commits, filename, 1) do
+            {:ok, commit}
         end
     end
 
@@ -105,7 +115,12 @@ defmodule Server.Commit do
     """
     def get_latest_commits(commits, filename, n)
     when is_binary(filename) and is_integer(n) do
-        Enum.take(get_filename_commits(commits, filename), n)
+        results = get_commits_stream(commits, filename)
+        |> Enum.take(n)
+        case results do
+            [] -> {:error, :not_found}
+            _ -> {:ok, results}
+        end
     end
 
     defp insert_timestamp_message(list, timestamp, message) do

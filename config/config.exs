@@ -1,2 +1,10 @@
-# import Config
-# config :server, :nodes_list, [:"m1@gus-Aspire-A515-51", :"m2@gus-Aspire-A515-51", :"m3@gus-Aspire-A515-51", :"m4@gus-Aspire-A515-51"]
+import Config
+
+machine_name = System.get_env("MACHINE", "machine-name")
+config :server, :node_list, [
+    :"foo@#{machine_name}", 
+    :"bar@#{machine_name}", 
+    :"goku@#{machine_name}", 
+    :"wayne@#{machine_name}"]
+
+config :server, :tolerance, 2
