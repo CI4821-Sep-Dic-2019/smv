@@ -4,8 +4,8 @@ defmodule SC.LoadBalancer do
     """
     use Agent, restart: :permanent
 
-    def start_link(_opts \\ []) do
-        Agent.start_link(fn -> 0 end)
+    def start_link(opts \\ []) do
+        Agent.start_link(fn -> 0 end, opts)
     end
 
     def next_servers(balancer, k)

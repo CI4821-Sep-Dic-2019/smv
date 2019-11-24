@@ -5,6 +5,7 @@ config :server, :node_list, [
     :"foo@#{machine_name}", 
     :"bar@#{machine_name}", 
     :"goku@#{machine_name}", 
-    :"wayne@#{machine_name}"]
+    :"wayne@#{machine_name}"
+]
 
-config :server, :tolerance, 2
+config :server, :tolerance, String.to_integer(System.get_env("TOL", "2"))

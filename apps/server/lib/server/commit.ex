@@ -9,8 +9,8 @@ defmodule Server.Commit do
     @doc """
     Starts a new agent with two maps: ({filename, timestamp} -> [node]) and (filename ->  [{timestamp,message}])
     """
-    def start_link(_opts \\ []) do
-        Agent.start_link(fn -> {%{}, %{}} end)
+    def start_link(opts \\ []) do
+        Agent.start_link(fn -> {%{}, %{}} end, opts)
     end
 
     @doc """
