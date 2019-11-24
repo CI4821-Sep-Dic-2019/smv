@@ -65,13 +65,12 @@ defmodule SC do
 
             # Return `{:error, reasons}`, where each reason is obtained from
             # each failed task.
-            {
-                :error, 
-                Enum.map(
-                    failed_tasks, 
-                    fn {:error, reason} -> reason end 
-                ) |> Enum.uniq() 
-            }
+            reasons = Enum.map(failed_tasks, fn {:error, reason} -> 
+                reason 
+            end) 
+            |> Enum.uniq()
+
+            {:error, reasons}
         else
             # Send info to each server
             Enum.map(Server.node_list, fn server ->
@@ -83,8 +82,17 @@ defmodule SC do
                 )
             end)
             |> Enum.each(&Task.await/1)
+
             :ok
         end
+    end
+
+    @doc """
+    Get last `n` commits.
+    """
+    def log(filename, n)
+    when is_binary(filename) and is_integer(n) do
+        Server.Commit.get_latest_commits(Server.Commit, filename, n)
     end
 
     defp failed_task?(:ok), do: false
