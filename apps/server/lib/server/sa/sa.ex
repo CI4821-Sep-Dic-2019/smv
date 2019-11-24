@@ -13,10 +13,19 @@ defmodule SA do
     @doc """
     Creates a file with name `filename`, `commit` and `content`.
     """
-    def put_file(commit, content) do
-        {:ok, file} = File.open("#{path()}#{get_name(commit)}", [:write])
-        IO.binwrite(file, content)
-        File.close(file)
+    def store(commit, content)
+    when is_binary(content) do
+        with {:ok, file} <- File.open("#{path()}#{get_name(commit)}", [:write]) do
+            IO.binwrite(file, content)
+            File.close(file)
+        end
+    end
+
+    @doc """
+    Remove file, maybe because a rollback.
+    """
+    def remove(filename, timestamp) do
+        File.rm("#{path()}#{filename}-#{timestamp}")
     end
 
     def get_name(%Server.Commit{filename: filename, timestamp: timestamp, message: _}) do
@@ -24,6 +33,6 @@ defmodule SA do
     end
 
     defp path() do
-        "../../files/"
+        "files/"
     end
 end
