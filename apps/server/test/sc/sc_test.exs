@@ -56,6 +56,8 @@ defmodule ServerTest.SC do
         assert length(servers2) == Server.tolerance + 1
         assert servers1 != servers2
 
+        assert SC.log(filename1, 2) == {:ok, [commit2, commit1]}
+
         Enum.each(servers2, fn server ->
             task = Task.Supervisor.async({SC.CoordTasks, server}, SA, :get_file, [commit2])
             assert Task.await(task) == {:ok, content2}
