@@ -19,7 +19,6 @@ defmodule Client do
 
     def update(filename)
     when is_binary(filename) do
-        central_server = get_central_server(dns())
         {commit, servers} = get_servers_commit_update(filename)
         {result, content} = case commit do
             :error ->
@@ -51,6 +50,36 @@ defmodule Client do
                 File.close(file)
                 IO.puts("Checkout exitoso")
             end
+        end
+    end
+
+    def commit(pathfile, filename, message)
+    when is_binary(pathfile) and is_binary(filename) and is_binary(message) do
+        {read_result, content} = File.read(pathfile)
+        commit_result = case read_result do
+            :error -> {:error, :incorrect_path}
+            :ok -> try_commit(filename, message, content)
+        end
+        case commit_result do
+            {:error, :incorrect_path} -> IO.puts("El path especificado es incorrecto")
+            {:error, _reason} -> IO.puts("Error, intenta más tarde")
+            :ok -> IO.puts("Commit exitoso")
+        end
+    end
+
+    defp try_commit(filename, message, content)
+    when is_binary(filename) and is_binary(message) and is_binary(content) do
+        central_server = get_central_server(dns())
+        try do
+            task = Task.Supervisor.async(
+                {Client.CoordTasks, central_server},
+                SC,
+                :commit,
+                [filename, message, content]
+            )
+            Task.await(task)
+        catch
+            :exit, _ -> {:error, :exception}
         end
     end
 
