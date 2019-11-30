@@ -18,6 +18,14 @@ defmodule SN do
         Agent.get(central_server, &(&1))
     end
 
+    def get_address do
+        get_address(ServerName)
+    end
+
+    def set_address(address) do
+        set_address(ServerName, address)
+    end
+
     def hello do
         :world
     end
