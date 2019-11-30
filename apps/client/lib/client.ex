@@ -2,7 +2,8 @@ defmodule Client do
     @moduledoc """
     Client application.
     """
-    def log(filename, n) do
+    def log(filename, n)
+    when is_binary(filename) and is_integer(n) do
         central_server = get_central_server(dns())
         task = Task.Supervisor.async(
             {Client.CoordTasks, central_server},
@@ -16,10 +17,29 @@ defmodule Client do
         end
     end
 
+    def update(filename)
+    when is_binary(filename) do
+        central_server = get_central_server(dns())
+        {commit, servers} = get_servers_commit_update(filename)
+        {result, content} = case commit do
+            :error ->
+                IO.puts("El archivo solicitado no existe")
+                {:error, nil}
+            _ -> retrieve_content(servers, commit.filename, commit.timestamp)
+        end
+        unless result == :error do
+            with {:ok, file} <- File.open(filename, [:write]) do
+                IO.binwrite(file, content)
+                File.close(file)
+                IO.puts("Update exitoso")
+            end
+        end
+    end
+
     def checkout(filename, timestamp)
     when is_binary(filename) and is_integer(timestamp) do
-        task = get_servers_checkout(filename, timestamp)
-        {result, content} = case task do
+        servers = get_servers_checkout(filename, timestamp)
+        {result, content} = case servers do
             {:error, _ } ->
                 IO.puts("La version solicitada no existe")
                 {:error, nil}
@@ -29,6 +49,7 @@ defmodule Client do
             with {:ok, file} <- File.open(filename, [:write]) do
                 IO.binwrite(file, content)
                 File.close(file)
+                IO.puts("Checkout exitoso")
             end
         end
     end
@@ -72,6 +93,18 @@ defmodule Client do
             SC,
             :checkout,
             [filename, timestamp]
+        )
+        Task.await(task)
+    end
+
+    defp get_servers_commit_update(filename)
+    when is_binary(filename) do
+        central_server = get_central_server(dns())
+        task = Task.Supervisor.async(
+            {Client.CoordTasks, central_server},
+            SC,
+            :update,
+            [filename]
         )
         Task.await(task)
     end
