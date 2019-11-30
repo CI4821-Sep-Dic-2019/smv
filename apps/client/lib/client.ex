@@ -2,6 +2,31 @@ defmodule Client do
     @moduledoc """
     Client application.
     """
+
+    def help do
+        message =
+        '''
+        Sistema Manejador de Versiones SVM
+        Uso: svm <comando> <argumentos>
+
+        Estos son los comandos disponibles:
+          help
+        \t    Muestra los comandos disponibles
+          log       <file name> <n>
+        \t    Muestra la información de los últimos <n> commits del archivo cuyo
+        \t    nombre sea <file name>
+          update    <file name>
+        \t    Proporciona la última versión del archivo <file name>
+          checkout  <file name> <timestamp>
+        \t    Proporciona la versión del archivo <file name> cuyo commit creada
+        \t    en el tiempo <timestamp>
+          commit    <path file> <file name> <message>
+        \t    Guarda el archivo local que se encuentre en <path file> como una
+        \t    nueva versión de <file name> con un mensaje <message>.
+        '''
+        IO.puts(message)
+    end
+
     def log(filename, n)
     when is_binary(filename) and is_integer(n) do
         central_server = get_central_server(dns())
