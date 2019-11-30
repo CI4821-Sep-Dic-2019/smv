@@ -16,6 +16,66 @@ defmodule Client do
         end
     end
 
+    def checkout(filename, timestamp)
+    when is_binary(filename) and is_integer(timestamp) do
+        task = get_servers_checkout(filename, timestamp)
+        {result, content} = case task do
+            {:error, _ } ->
+                IO.puts("La version solicitada no existe")
+                {:error, nil}
+            servers -> retrieve_content(servers, filename, timestamp)
+        end
+        unless result == :error do
+            with {:ok, file} <- File.open(filename, [:write]) do
+                IO.binwrite(file, content)
+                File.close(file)
+            end
+        end
+    end
+
+    defp retrieve_content(servers, filename, timestamp)
+    when is_binary(filename) and is_integer(timestamp) do
+        case servers do
+            [] ->
+                IO.puts("Error, intente nuevamente")
+                {:error, nil}
+            [server | tail] ->
+                {result, content} = try_retrieve(server, filename, timestamp)
+                if result == :error do
+                    retrieve_content(tail, filename, timestamp)
+                else
+                    {:ok, content}
+                end
+        end
+    end
+
+    defp try_retrieve(server, filename, timestamp)
+    when is_binary(filename) and is_integer(timestamp) do
+        try do
+            task = Task.Supervisor.async(
+                {Client.CoordTasks, server},
+                SA,
+                :get_file,
+                [%Server.Commit{filename: filename, timestamp: timestamp, message: ""}]
+            )
+            Task.await(task)
+        catch
+            :exit, _ -> {:error, nil}
+        end
+    end
+
+    defp get_servers_checkout(filename, timestamp)
+    when is_binary(filename) and is_integer(timestamp) do
+        central_server = get_central_server(dns())
+        task = Task.Supervisor.async(
+            {Client.CoordTasks, central_server},
+            SC,
+            :checkout,
+            [filename, timestamp]
+        )
+        Task.await(task)
+    end
+
     defp get_central_server(dns)
     when is_atom(dns) do
         {:ok, server} = File.read(path_file())
@@ -59,7 +119,7 @@ defmodule Client do
         Enum.map(
             Enum.reverse(commits),
             fn %Server.Commit{
-                filename: filename,
+                filename: _,
                 timestamp: timestamp,
                 message: message
             } -> IO.puts("#{timestamp}\t#{message}") end
