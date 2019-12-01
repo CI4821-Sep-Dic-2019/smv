@@ -102,6 +102,6 @@ defmodule SC do
     defp failed_task?(:ok), do: false
     defp failed_task?({:ok, _}), do: false
     defp failed_task?({:error, _}), do: true
-  
-  end
+
+end
   
