@@ -43,23 +43,38 @@ defmodule Server.Acuerdo do
             |> Enum.map(&call_elections(&1))
 
         unless Enum.any?(answers, &(check_ok(&1))) do
-                Enum.map(get_nodes(), &(notify_coordinator(&1, Node.self())))
+            set_coordinator()
+            Enum.map(get_nodes(), &(notify_coordinator(&1, Node.self())))
                 |> Enum.map(fn 
                     {:ok, task} -> Task.await(task)
                     _ -> :error
                 end)
         end
 
-        Enum.map(answers, fn 
-            {:ok, task} ->  Task.await(task)
-            _ -> :error
-        end)
+        try do
+            Enum.map(answers, fn
+                {:ok, task} ->  Task.await(task)
+                _ -> :error
+            end)
+        catch
+            :exit, _ -> elections()
+        end
 
         if Node.ping(get_coordinator()) == :pang do
             elections()
         end
 
         :ok
+    end
+
+    defp set_coordinator do
+        task = Task.Supervisor.async(
+            {SC.CoordTasks, dns()},
+            SN,
+            :set_address,
+            [Node.self()]
+        )
+        Task.await(task)
     end
 
     defp call_elections(server) do
@@ -100,4 +115,6 @@ defmodule Server.Acuerdo do
             _ -> false
         end
     end
+
+    defp dns do :"dns@rubmary-Inspiron-7370" end
 end
