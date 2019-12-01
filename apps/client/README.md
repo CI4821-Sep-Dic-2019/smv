@@ -1,21 +1,18 @@
 # Client
 
-**TODO: Add description**
-
-## Installation
-
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `client` to your list of dependencies in `mix.exs`:
-
-```elixir
-def deps do
-  [
-    {:client, "~> 0.1.0"}
-  ]
-end
+Es necesario cargar el archivo `function.sh` para que se puedan ejecutar los comandos:
+(desde la carpeta principal de la aplicación)
+```
+source apps/client/function.sh
+```
+El uso es:
+```
+svm <comando> <argumentos>
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/client](https://hexdocs.pm/client).
-
+# # Comandos
+- `help`: muestra al usuario los posibles comandos para el SMV.
+- `log <file name> <n>`: muestra al usuario información de los últimos `<n>` commits del archivo cuyo nombre sea `<file name>`.
+- `update <file name>`: se le proporciona al usuario la última versión del archivo cuyo nombre es `<file name>` que se encuentrenen los servidores.
+- `checkout <file name> <timestamp>`: se le proporciona al usuario la versión del archivo con nombre `<file name>` cuyo commit fue creado en el tiempo `<timestamp>`.
+- `commit <path file> <file name> <message>`: guarda el archivo local que se encuentre en `<path file>` como una nueva versión de `<file name>` y cuyo commit tiene un mensaje `<message>`.

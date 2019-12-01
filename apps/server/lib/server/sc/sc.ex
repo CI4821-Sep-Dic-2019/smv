@@ -87,6 +87,10 @@ defmodule SC do
         end
     end
 
+    def test_comunication do
+        :ok
+    end
+
     @doc """
     Get last `n` commits.
     """
@@ -98,6 +102,6 @@ defmodule SC do
     defp failed_task?(:ok), do: false
     defp failed_task?({:ok, _}), do: false
     defp failed_task?({:error, _}), do: true
-  
-  end
+
+end
   
