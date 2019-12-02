@@ -94,9 +94,40 @@ defmodule SC do
         Server.Commit.get_latest_commits(Server.Commit, filename, n)
     end
 
+    @doc """
+    Registry new node
+    """
+    def registry_node(new_node)
+    when is_atom(new_node) do
+        nodes = Server.Nodes.get_nodes()
+        Enum.map(nodes, &add_node(&1, new_node))
+            |> Enum.map(
+                fn
+                    {:ok, task} -> Task.await(task)
+                    _ -> :error
+                end
+            )
+        {nodes, Server.Commit.registry_node_inf(Server.Commit)}
+    end
+
+    defp add_node(server, new_node) do
+        try do
+        {
+            :ok,
+            Task.Supervisor.async(
+                {SC.CoordTasks, server},
+                Server.Nodes,
+                :add_node,
+                [new_node]
+            )
+        }
+        catch
+            :exit, _ -> :error
+        end
+    end
+
     defp failed_task?(:ok), do: false
     defp failed_task?({:ok, _}), do: false
     defp failed_task?({:error, _}), do: true
-
 end
   
