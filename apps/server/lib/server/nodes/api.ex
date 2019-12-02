@@ -17,8 +17,4 @@ defmodule Server.Nodes do
     def get_coordinator(servers \\ Server.Nodes) do
         GenServer.call(servers, :get_coordinator)
     end
-
-    def elections(servers \\ Server.Nodes) do
-        GenServer.call(servers, :elections)
-    end
 end

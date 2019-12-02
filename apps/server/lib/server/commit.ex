@@ -14,6 +14,20 @@ defmodule Server.Commit do
     end
 
     @doc """
+    Get all commits information to registry a new node
+    """
+    def registry_node_inf(commits) do
+        Agent.get(commits, &(&1))
+    end
+
+    @doc """
+    Set all commits information to registry a new node
+    """
+    def set_commits_inf(commits, new_inf) do
+        Agent.update(commits, fn _ -> new_inf end)
+    end
+
+    @doc """
     Gets a list of nodes of `{filename, timestamp}`.
     Returns `{:error, :not_found}` if there are not commits to this `filename`.
     """
