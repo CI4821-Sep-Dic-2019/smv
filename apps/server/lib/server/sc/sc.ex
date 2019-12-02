@@ -87,10 +87,6 @@ defmodule SC do
         end
     end
 
-    def test_comunication do
-        :ok
-    end
-
     @doc """
     Get last `n` commits.
     """
