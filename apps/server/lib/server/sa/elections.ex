@@ -7,12 +7,12 @@ defmodule SA.Elections do
     Call elections using bully algorithm
     """
     def elections() do
-        answers = Enum.filter(Server.Nodes.get_nodes(), &(&1 > Node.self()))
+        answers = Enum.filter(alive_nodes(), &(&1 > Node.self()))
             |> Enum.map(&call_elections(&1))
 
         unless Enum.any?(answers, &(check_ok(&1))) do
             SA.become_coordinator()
-            Enum.map(Server.Nodes.get_nodes(), &(notify_coordinator(&1, Node.self())))
+            Enum.map(alive_nodes(), &(notify_coordinator(&1, Node.self())))
                 |> Enum.map(fn 
                     {:ok, task} -> Task.await(task)
                     _ -> :error
@@ -32,6 +32,10 @@ defmodule SA.Elections do
             elections()
         end
         :ok
+    end
+
+    defp alive_nodes() do
+        Enum.filter(Server.Nodes.get_nodes(), &(Node.ping(&1) == :pong))
     end
 
     defp call_elections(server) do
