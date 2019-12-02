@@ -73,7 +73,7 @@ defmodule SC do
             {:error, reasons}
         else
             # Send info to each server
-            Enum.map(Server.node_list, fn server ->
+            Enum.map(Server.Acuerdo.get_nodes(), fn server ->
                 Task.Supervisor.async(
                     {SC.CoordTasks, server},
                     Server.Commit,
