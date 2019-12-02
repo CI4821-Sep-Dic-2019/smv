@@ -1,6 +1,5 @@
 defmodule Server.Nodes.Callbacks do
     use GenServer, restart: :permanent
-    import Server.Nodes
     
     @doc """
     Starts the genserver.
@@ -64,87 +63,4 @@ defmodule Server.Nodes.Callbacks do
     def handle_call(:get_coordinator, _from, state) do
         {:reply, elem(state, 1), state}
     end
-
-    @impl true
-    def handle_call(:elections, _from, state) do
-        answers = Enum.filter(get_nodes(), &(&1 > Node.self()))
-            |> Enum.map(&call_elections(&1))
-
-        unless Enum.any?(answers, &(check_ok(&1))) do
-            set_coordinator()
-            Enum.map(get_nodes(), &(notify_coordinator(&1, Node.self())))
-                |> Enum.map(fn 
-                    {:ok, task} -> Task.await(task)
-                    _ -> :error
-                end)
-        end
-
-        try do
-            Enum.map(answers, fn
-                {:ok, task} ->  Task.await(task)
-                _ -> :error
-            end)
-        catch
-            :exit, _ -> elections()
-        end
-
-        if Node.ping(get_coordinator()) == :pang do
-            elections()
-        end
-
-        {:reply, :ok, state}
-    end
-
-    ###################### Private functions ###############################
-
-    defp set_coordinator do
-        task = Task.Supervisor.async(
-            {SC.CoordTasks, dns()},
-            SN,
-            :set_address,
-            [Node.self()]
-        )
-        Task.await(task)
-    end
-
-    defp call_elections(server) do
-        try do
-            {
-                :ok,
-                Task.Supervisor.async(
-                    {SC.CoordTasks, server},
-                    Server.Nodes,
-                    :elections,
-                    []
-                )
-            }
-        catch
-            :exit, _ -> :error
-        end
-    end
-
-    defp notify_coordinator(server, coordinator) do
-        try do
-            {
-                :ok,
-                Task.Supervisor.async(
-                    {SC.CoordTasks, server},
-                    Server.Nodes,
-                    :set_coordinator,
-                    [coordinator]
-                )
-            }
-        catch
-            :exit, _ -> :error
-        end
-    end
-
-    defp check_ok(answer) do
-        case answer do
-            {:ok, _task} -> true
-            _ -> false
-        end
-    end
-
-    defp dns do :"dns@rubmary-Inspiron-7370" end
 end
