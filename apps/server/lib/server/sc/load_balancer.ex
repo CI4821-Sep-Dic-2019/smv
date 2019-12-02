@@ -11,11 +11,11 @@ defmodule SC.LoadBalancer do
     def next_servers(balancer, k)
     when is_integer(k) and k > 0 do
         idx = Agent.get(balancer, & &1)
-        n = length(Server.Acuerdo.get_nodes())
+        n = length(Server.Nodes.get_nodes())
         rounds = ceil(k/n)
 
         # Get `k` elements starting at `idx`.
-        result = List.duplicate(Server.Acuerdo.get_nodes(Servers), rounds + 1)
+        result = List.duplicate(Server.Nodes.get_nodes(Server.Nodes), rounds + 1)
             |> List.flatten()
             |> Enum.drop(idx)
             |> Enum.take(k)

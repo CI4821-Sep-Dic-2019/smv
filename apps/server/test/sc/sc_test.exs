@@ -3,7 +3,7 @@ defmodule ServerTest.SC do
 
     setup_all do
         Enum.each(Application.fetch_env!(:server, :node_list), fn node ->
-            Server.Acuerdo.add_node(node)
+            Server.Nodes.add_node(node)
         end)
     end
 
@@ -101,8 +101,9 @@ defmodule ServerTest.SC do
         end)
     end
 
+    @tag :distributed
     test "update unknown filename" do
-        assert SC.update("file.test") == {:error, :not_found}
-        assert SC.checkout("file.test", 123) == {:error, :not_found}
+        assert SC.update("unknown.test") == {:error, :not_found}
+        assert SC.checkout("unknown.test", 123) == {:error, :not_found}
     end
 end

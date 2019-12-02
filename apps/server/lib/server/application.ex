@@ -3,7 +3,7 @@ defmodule Server.Application do
 
   def start(_type, _args) do
     children = [
-      {Server.Acuerdo, name: Servers},
+      {Server.Nodes.Callbacks, name: Server.Nodes},
       {Server.Commit, name: Server.Commit},
       {SC.LoadBalancer, name: SC.LoadBalancer},
       {Task.Supervisor, name: SC.CoordTasks}
