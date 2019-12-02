@@ -1,44 +1,91 @@
 defmodule Server.Acuerdo do
 
-    use Agent, restart: :permanent
+    use GenServer, restart: :permanent
 
+    ###################### API ##############################
+
+    @doc """
+    Starts the genserver.
+    """
     def start_link(opts \\ []) do
-        Agent.start_link(fn -> {[], :ok} end, opts)
+        GenServer.start_link(__MODULE__, :ok, opts)
     end
 
-    def add_node(machine, state \\ Servers)
+    def add_node(machine, servers \\ Servers) do
+        GenServer.call(servers, {:add_node, machine})
+    end
+
+    def remove_node(machine, servers \\ Servers) do
+        GenServer.call(servers, {:remove_node, machine})
+    end
+    
+    def get_nodes(servers \\ Servers) do
+        GenServer.call(servers, :get_nodes)
+    end
+
+    def set_coordinator(coordinator, servers \\ Servers)
+    when is_atom(coordinator) do
+        GenServer.call(servers, {:set_coordinator, coordinator})
+    end
+
+    def get_coordinator(servers \\ Servers) do
+        GenServer.call(servers, :get_coordinator)
+    end
+
+    def elections(servers \\ Servers) do
+        GenServer.call(servers, :elections)
+    end
+
+    ###################### GenServer Callbacks ##############################
+
+    @impl true
+    def init(:ok) do
+        {:ok, {[], nil, %{}}}
+    end
+
+    @doc """
+    Add a node to the list of available distributed nodes.
+    """
+    @impl true
+    def handle_call({:add_node, machine}, _from, state)
     when is_atom(machine) do
-        Agent.update(state, fn {nodes, central_server} ->
-            {
-                [machine | nodes],
-                central_server
-            }
-        end )
+        {nodes, central_server, refs} = state
+        {:reply, :ok, {
+            [machine | nodes],
+            central_server,
+            refs
+        }}
     end
 
-    def remove_node(machine, state \\ Servers)
+    @impl true
+    def handle_call({:remove_node, machine}, _from, state)
     when is_atom(machine) do
-        Agent.update(state, fn {nodes, central_server} ->
-            {
-                List.delete(nodes, machine),
-                central_server
-            }
-        end)
+        {nodes, central_server, refs} = state
+        {:reply, :ok, {
+            List.delete(nodes, machine),
+            central_server,
+            refs
+        }}
     end
 
-    def get_nodes(state \\ Servers) do
-        Agent.get(state, fn {nodes, _} -> nodes end)
+    @impl true
+    def handle_call(:get_nodes, _from, state) do
+        {:reply, elem(state, 0), state}
     end
 
-    def set_coordinator(coordinator, state \\ Servers) do
-        Agent.update(state, fn {servers, _} -> {servers, coordinator} end)
+    @impl true
+    def handle_call({:set_coordinator, coordinator}, _from, state) do
+        {servers, _, refs} = state
+        {:reply, :ok, {servers, coordinator, refs}}
     end
 
-    def get_coordinator(state \\ Servers) do
-        Agent.get(state, fn {_, coordinator} -> coordinator end)
+    @impl true
+    def handle_call(:get_coordinator, _from, state) do
+        {:reply, elem(state, 1), state}
     end
 
-    def elections do
+    @impl true
+    def handle_call(:elections, _from, state) do
         answers = Enum.filter(get_nodes(), &(&1 > Node.self()))
             |> Enum.map(&call_elections(&1))
 
@@ -64,8 +111,11 @@ defmodule Server.Acuerdo do
             elections()
         end
 
-        :ok
+        {:reply, :ok, state}
     end
+
+
+    ###################### Private functions ###############################
 
     defp set_coordinator do
         task = Task.Supervisor.async(
