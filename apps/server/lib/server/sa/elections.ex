@@ -1,5 +1,5 @@
 defmodule SA.Elections do
-	@moduledoc """
+    @moduledoc """
     Server module with funcionalities to elect a new coordinator
     """
 
@@ -11,7 +11,7 @@ defmodule SA.Elections do
             |> Enum.map(&call_elections(&1))
 
         unless Enum.any?(answers, &(check_ok(&1))) do
-            set_coordinator()
+            SA.become_coordinator()
             Enum.map(Server.Nodes.get_nodes(), &(notify_coordinator(&1, Node.self())))
                 |> Enum.map(fn 
                     {:ok, task} -> Task.await(task)
@@ -32,16 +32,6 @@ defmodule SA.Elections do
             elections()
         end
         :ok
-    end
-
-    defp set_coordinator do
-        task = Task.Supervisor.async(
-            {SC.CoordTasks, dns()},
-            SN,
-            :set_address,
-            [Node.self()]
-        )
-        Task.await(task)
     end
 
     defp call_elections(server) do
@@ -82,6 +72,4 @@ defmodule SA.Elections do
             _ -> false
         end
     end
-
-    defp dns do :"dns@rubmary-Inspiron-7370" end
 end

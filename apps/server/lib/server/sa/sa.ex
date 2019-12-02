@@ -33,12 +33,12 @@ defmodule SA do
     """
     def registry(tries \\ 3)
     when is_integer(tries) do
-        central_server = get_central_server(dns())
-        # To do
-        # - Auto asignarse como SC cuando sea el primer servidor
-        # - Verificar el orden en que se agregan los nodos a la lista
-        #   o verficar que el orden no sea relevante
-        # - Acomodar elecciones :(
+        central_server = case get_central_server(dns()) do
+            :noserver ->
+                become_coordinator()
+                Node.self()
+            server -> server
+        end
         registry_inf = try_registry(central_server)
         if  registry_inf == :error do
             case tries do
@@ -53,11 +53,22 @@ defmodule SA do
             Server.Nodes.set_coordinator(central_server)
             Enum.map(nodes, fn server -> Server.Nodes.add_node(server) end)
             Server.Nodes.add_node(Node.self())
+            SA.Elections.elections()
         end
     end
 
     def get_name(%Server.Commit{filename: filename, timestamp: timestamp, message: _}) do
         "#{filename}-#{timestamp}"
+    end
+
+    def become_coordinator do
+        task = Task.Supervisor.async(
+            {SC.CoordTasks, dns()},
+            SN,
+            :set_address,
+            [Node.self()]
+        )
+        Task.await(task)
     end
 
     defp try_registry(central_server) do
