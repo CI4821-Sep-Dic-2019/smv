@@ -106,4 +106,6 @@ defmodule ServerTest.SC do
         assert SC.update("unknown.test") == {:error, :not_found}
         assert SC.checkout("unknown.test", 123) == {:error, :not_found}
     end
+
+    ## TODO: Test register a new node into the system.
 end
