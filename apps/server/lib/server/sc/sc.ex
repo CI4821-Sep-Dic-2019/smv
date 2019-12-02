@@ -29,7 +29,6 @@ defmodule SC do
     def commit(filename, message, content) do
         # Next `n` servers, according to the load balancer.
         servers = SC.LoadBalancer.next_servers(SC.LoadBalancer, Server.tolerance() + 1)
-
         # Commit to be added
         new_commit = %Server.Commit{
             filename: filename,
@@ -73,7 +72,7 @@ defmodule SC do
             {:error, reasons}
         else
             # Send info to each server
-            Enum.map(Server.node_list, fn server ->
+            Enum.map(Server.Nodes.get_nodes(), fn server ->
                 Task.Supervisor.async(
                     {SC.CoordTasks, server},
                     Server.Commit,

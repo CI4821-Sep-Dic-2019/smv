@@ -1,6 +1,12 @@
 defmodule ServerTest.SC do
     use ExUnit.Case, async: true
 
+    setup_all do
+        Enum.each(Application.fetch_env!(:server, :node_list), fn node ->
+            Server.Nodes.add_node(node)
+        end)
+    end
+
     setup do
         File.rm_rf "files"
         File.mkdir "files"
@@ -95,8 +101,11 @@ defmodule ServerTest.SC do
         end)
     end
 
+    @tag :distributed
     test "update unknown filename" do
-        assert SC.update("file.test") == {:error, :not_found}
-        assert SC.checkout("file.test", 123) == {:error, :not_found}
+        assert SC.update("unknown.test") == {:error, :not_found}
+        assert SC.checkout("unknown.test", 123) == {:error, :not_found}
     end
+
+    ## TODO: Test register a new node into the system.
 end
