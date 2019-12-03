@@ -7,7 +7,7 @@ defmodule Client do
         message =
         '''
         Sistema Manejador de Versiones SVM
-        Uso: svm <comando> <argumentos>
+        Uso: smv <comando> <argumentos>
 
         Estos son los comandos disponibles:
           help
