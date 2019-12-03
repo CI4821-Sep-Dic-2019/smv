@@ -1,6 +1,14 @@
 defmodule Server.Nodes do
     ###################### API ##############################
 
+    def get_state(servers \\ Server.Nodes) do
+        GenServer.call(servers, :get_state)
+    end
+
+    def set_state(new_state, servers \\ Server.Nodes) do
+        GenServer.call(servers, {:set_state, new_state})
+    end
+
     def add_node(machine, servers \\ Server.Nodes) do
         GenServer.call(servers, {:add_node, machine})
     end

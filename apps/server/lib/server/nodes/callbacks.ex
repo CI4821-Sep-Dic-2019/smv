@@ -1,6 +1,5 @@
 defmodule Server.Nodes.Callbacks do
     use GenServer, restart: :permanent
-    import Server.Nodes
     
     @doc """
     Starts the genserver.
@@ -26,10 +25,33 @@ defmodule Server.Nodes.Callbacks do
     """
     @impl true
     def handle_info({:nodedown, node}, {nodes, central_server}) do
-        {:noreply, {
+        new_state = {
             List.delete(nodes, node),
             central_server
-        }}
+        }
+        new_state = elections(new_state)
+        {:noreply, new_state}
+    end
+
+    @impl true
+    def handle_info(_, state) do
+        {:noreply, state}
+    end
+
+    @doc """
+    Get all state.
+    """
+    @impl true
+    def handle_call(:get_state, _from, state) do
+        {:reply, state, state}
+    end
+
+    @doc """
+    Set new state
+    """
+    @impl true
+    def handle_call({:set_state, new_state}, _from, _state) do
+        {:reply, :ok, new_state}
     end
 
     @doc """
@@ -40,6 +62,7 @@ defmodule Server.Nodes.Callbacks do
     when is_atom(machine) do
         if Enum.find(nodes, & &1 == machine) == nil do
             Node.monitor(machine, true)
+
             {:reply, :ok, {
                 [machine | nodes],
                 central_server
@@ -51,7 +74,7 @@ defmodule Server.Nodes.Callbacks do
 
     @impl true
     def handle_call(:get_nodes, _from, state) do
-        {:reply, elem(state, 0), state}
+        {:reply, get_nodes(state), state}
     end
 
     @impl true
@@ -67,44 +90,20 @@ defmodule Server.Nodes.Callbacks do
 
     @impl true
     def handle_call(:elections, _from, state) do
-        answers = Enum.filter(get_nodes(), &(&1 > Node.self()))
-            |> Enum.map(&call_elections(&1))
-
-        unless Enum.any?(answers, &(check_ok(&1))) do
-            set_coordinator()
-            Enum.map(get_nodes(), &(notify_coordinator(&1, Node.self())))
-                |> Enum.map(fn 
-                    {:ok, task} -> Task.await(task)
-                    _ -> :error
-                end)
-        end
-
-        try do
-            Enum.map(answers, fn
-                {:ok, task} ->  Task.await(task)
-                _ -> :error
-            end)
-        catch
-            :exit, _ -> elections()
-        end
-
-        if Node.ping(get_coordinator()) == :pang do
-            elections()
-        end
-
-        {:reply, :ok, state}
+        {_, new_coordinator} = new_state = elections(state)
+        {:reply, new_coordinator, new_state}
     end
 
     ###################### Private functions ###############################
 
-    defp set_coordinator do
-        task = Task.Supervisor.async(
-            {SC.CoordTasks, dns()},
+    defp register_coordinator do
+        Task.Supervisor.async(
+            {SN.TaskSupervisor, Server.dns()},
             SN,
             :set_address,
             [Node.self()]
         )
-        Task.await(task)
+        |> Task.await()
     end
 
     defp call_elections(server) do
@@ -112,7 +111,7 @@ defmodule Server.Nodes.Callbacks do
             {
                 :ok,
                 Task.Supervisor.async(
-                    {SC.CoordTasks, server},
+                    {Server.CoordTasks, server},
                     Server.Nodes,
                     :elections,
                     []
@@ -128,7 +127,7 @@ defmodule Server.Nodes.Callbacks do
             {
                 :ok,
                 Task.Supervisor.async(
-                    {SC.CoordTasks, server},
+                    {Server.CoordTasks, server},
                     Server.Nodes,
                     :set_coordinator,
                     [coordinator]
@@ -146,5 +145,28 @@ defmodule Server.Nodes.Callbacks do
         end
     end
 
-    defp dns do :"dns@rubmary-Inspiron-7370" end
+    defp elections({nodes, _} = state) do
+        answers = Enum.filter(get_nodes(state), &(&1 > Node.self()))
+            |> Enum.map(&call_elections(&1))
+
+        unless Enum.any?(answers, &(check_ok(&1))) do
+            register_coordinator()
+
+            Enum.filter(get_nodes(state), & &1 != Node.self())
+            |> Enum.map( &notify_coordinator(&1, Node.self()) )
+            |> Enum.map(fn 
+                {:ok, task} -> Task.await(task)
+                _ -> :error
+            end)
+
+            {nodes, Node.self()}
+        else
+            state
+        end
+    end
+
+    defp get_nodes(state) do
+        elem(state, 0)
+    end
+
 end

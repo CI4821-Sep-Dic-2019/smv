@@ -37,7 +37,7 @@ defmodule ServerTest.SC do
 
         # Check file is in each server
         Enum.each(servers1, fn server ->
-            task = Task.Supervisor.async({SC.CoordTasks, server}, SA, :get_file, [commit1])
+            task = Task.Supervisor.async({Server.CoordTasks, server}, SA, :get_file, [commit1])
             assert Task.await(task) == {:ok, content1}
         end)
 
@@ -65,7 +65,7 @@ defmodule ServerTest.SC do
         assert SC.log(filename1, 2) == {:ok, [commit2, commit1]}
 
         Enum.each(servers2, fn server ->
-            task = Task.Supervisor.async({SC.CoordTasks, server}, SA, :get_file, [commit2])
+            task = Task.Supervisor.async({Server.CoordTasks, server}, SA, :get_file, [commit2])
             assert Task.await(task) == {:ok, content2}
         end)
     end
@@ -95,7 +95,7 @@ defmodule ServerTest.SC do
         # For each server, check it has the correct file.
         Enum.each([{commit1, servers1, content1}, {commit2, servers2, content2}], fn {commit, servers, content} ->
             Enum.each(servers, fn server ->
-                task = Task.Supervisor.async({SC.CoordTasks, server}, SA, :get_file, [commit])
+                task = Task.Supervisor.async({Server.CoordTasks, server}, SA, :get_file, [commit])
                 assert Task.await(task) == {:ok, content}
             end)
         end)
@@ -107,5 +107,4 @@ defmodule ServerTest.SC do
         assert SC.checkout("unknown.test", 123) == {:error, :not_found}
     end
 
-    ## TODO: Test register a new node into the system.
 end

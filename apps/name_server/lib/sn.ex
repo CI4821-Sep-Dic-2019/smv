@@ -7,7 +7,7 @@ defmodule SN do
     #TO DO: ampliar la estructura para la direccion en caso
     # que se necesiten dos argumentos
     def start_link(opts \\ []) do
-        Agent.start_link(fn -> :ok end, opts)
+        Agent.start_link(fn -> nil end, opts)
     end
 
     def set_address(central_server, address) do

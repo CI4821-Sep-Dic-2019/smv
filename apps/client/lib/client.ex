@@ -7,7 +7,7 @@ defmodule Client do
         message =
         '''
         Sistema Manejador de Versiones SVM
-        Uso: svm <comando> <argumentos>
+        Uso: smv <comando> <argumentos>
 
         Estos son los comandos disponibles:
           help
@@ -29,9 +29,9 @@ defmodule Client do
 
     def log(filename, n)
     when is_binary(filename) and is_integer(n) do
-        central_server = get_central_server(dns())
+        central_server = get_central_server(Server.dns())
         task = Task.Supervisor.async(
-            {Client.CoordTasks, central_server},
+            {Server.CoordTasks, central_server},
             SC,
             :log,
             [filename, n]
@@ -94,10 +94,10 @@ defmodule Client do
 
     defp try_commit(filename, message, content)
     when is_binary(filename) and is_binary(message) and is_binary(content) do
-        central_server = get_central_server(dns())
+        central_server = get_central_server(Server.dns())
         try do
             task = Task.Supervisor.async(
-                {Client.CoordTasks, central_server},
+                {Server.CoordTasks, central_server},
                 SC,
                 :commit,
                 [filename, message, content]
@@ -128,7 +128,7 @@ defmodule Client do
     when is_binary(filename) and is_integer(timestamp) do
         try do
             task = Task.Supervisor.async(
-                {Client.CoordTasks, server},
+                {Server.CoordTasks, server},
                 SA,
                 :get_file,
                 [%Server.Commit{filename: filename, timestamp: timestamp, message: ""}]
@@ -141,9 +141,9 @@ defmodule Client do
 
     defp get_servers_checkout(filename, timestamp)
     when is_binary(filename) and is_integer(timestamp) do
-        central_server = get_central_server(dns())
+        central_server = get_central_server(Server.dns())
         task = Task.Supervisor.async(
-            {Client.CoordTasks, central_server},
+            {Server.CoordTasks, central_server},
             SC,
             :checkout,
             [filename, timestamp]
@@ -153,9 +153,9 @@ defmodule Client do
 
     defp get_servers_commit_update(filename)
     when is_binary(filename) do
-        central_server = get_central_server(dns())
+        central_server = get_central_server(Server.dns())
         task = Task.Supervisor.async(
-            {Client.CoordTasks, central_server},
+            {Server.CoordTasks, central_server},
             SC,
             :update,
             [filename]
@@ -166,7 +166,7 @@ defmodule Client do
     defp get_central_server(dns, tries \\ 3)
     when is_atom(dns) and is_integer(tries) do
         task = Task.Supervisor.async(
-                {Client.CoordTasks, dns},
+                {SN.TaskSupervisor, dns},
                 SN,
                 :get_address,
                 []
@@ -185,8 +185,6 @@ defmodule Client do
             central_server
         end
     end
-
-    defp dns do :"dns@rubmary-Inspiron-7370" end
 
     defp print_commits(commits) do
         Enum.map(

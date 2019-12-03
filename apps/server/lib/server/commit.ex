@@ -14,6 +14,20 @@ defmodule Server.Commit do
     end
 
     @doc """
+    Get all state.
+    """
+    def get_state(commits \\ Server.Commit) do
+        Agent.get(commits, & &1)
+    end
+
+    @doc """
+    Set state.
+    """
+    def set_state(commits \\ Server.Commit, new_state) do
+        Agent.update(commits, fn _ -> new_state end )
+    end
+
+    @doc """
     Gets a list of nodes of `{filename, timestamp}`.
     Returns `{:error, :not_found}` if there are not commits to this `filename`.
     """

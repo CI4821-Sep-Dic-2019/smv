@@ -7,7 +7,8 @@ defmodule SN.Application do
 
   def start(_type, _args) do
     children = [
-      {SN, name: ServerName}
+      {SN, name: ServerName},
+      {Task.Supervisor, name: SN.TaskSupervisor}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
