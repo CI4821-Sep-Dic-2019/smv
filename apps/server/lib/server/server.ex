@@ -1,6 +1,6 @@
 defmodule Server do
-    def node_list do
-        Application.fetch_env!(:server, :node_list)
+    def dns do
+        Application.fetch_env!(:server, :dns)
     end
 
     def tolerance do

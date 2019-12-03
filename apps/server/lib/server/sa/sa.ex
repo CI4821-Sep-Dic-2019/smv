@@ -33,7 +33,7 @@ defmodule SA do
     """
     def registry(tries \\ 3)
     when is_integer(tries) do
-        central_server = case get_central_server(dns()) do
+        central_server = case get_central_server(Server.dns()) do
             :noserver ->
                 become_coordinator()
                 Node.self()
@@ -63,7 +63,7 @@ defmodule SA do
 
     def become_coordinator do
         task = Task.Supervisor.async(
-            {SC.CoordTasks, dns()},
+            {SC.CoordTasks, Server.dns()},
             SN,
             :set_address,
             [Node.self()]
@@ -108,6 +108,4 @@ defmodule SA do
     defp path() do
         "files/"
     end
-
-    defp dns do :"dns@rubmary-Inspiron-7370" end
 end

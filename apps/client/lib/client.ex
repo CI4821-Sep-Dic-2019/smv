@@ -29,7 +29,7 @@ defmodule Client do
 
     def log(filename, n)
     when is_binary(filename) and is_integer(n) do
-        central_server = get_central_server(dns())
+        central_server = get_central_server(Server.dns())
         task = Task.Supervisor.async(
             {Client.CoordTasks, central_server},
             SC,
@@ -94,7 +94,7 @@ defmodule Client do
 
     defp try_commit(filename, message, content)
     when is_binary(filename) and is_binary(message) and is_binary(content) do
-        central_server = get_central_server(dns())
+        central_server = get_central_server(Server.dns())
         try do
             task = Task.Supervisor.async(
                 {Client.CoordTasks, central_server},
@@ -141,7 +141,7 @@ defmodule Client do
 
     defp get_servers_checkout(filename, timestamp)
     when is_binary(filename) and is_integer(timestamp) do
-        central_server = get_central_server(dns())
+        central_server = get_central_server(Server.dns())
         task = Task.Supervisor.async(
             {Client.CoordTasks, central_server},
             SC,
@@ -153,7 +153,7 @@ defmodule Client do
 
     defp get_servers_commit_update(filename)
     when is_binary(filename) do
-        central_server = get_central_server(dns())
+        central_server = get_central_server(Server.dns())
         task = Task.Supervisor.async(
             {Client.CoordTasks, central_server},
             SC,
@@ -185,8 +185,6 @@ defmodule Client do
             central_server
         end
     end
-
-    defp dns do :"dns@rubmary-Inspiron-7370" end
 
     defp print_commits(commits) do
         Enum.map(
