@@ -2,7 +2,6 @@
 Para la materia _Sistemas de Operación II (CI4821)_ de la Universidad Simón Bolívar, Venezuela.
 
 ## Cómo levantar el sistema
-___
 _Nótese que varios modulos del sistema dependen de variables de entorno. Si decide setearlas con `export` no tendría que setearlas cada vez que se ejecute un comando._
 
 _Una variable de entorno que no aparece en los siguientes ejemplos pero que está disponible es `TOL`, la cual especifica el número de fallas que debe soportar el sistema. De no setearse se asume una 2-tolerancia a fallas._
