@@ -50,10 +50,10 @@ source apps/client/function.sh
 
 Luego puedes ejecutar los comandos así:
 ```bash
-HOST=gus-Aspire-A515-51 smv help
+HOST=gus-gus-Canaima-novich-420 smv help
 ```
 o
 ```bash
-export HOST=gus-Aspire-A515-51
+export HOST=gus-Canaima-novich-420
 smv help
 ```
