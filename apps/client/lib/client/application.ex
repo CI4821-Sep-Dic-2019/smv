@@ -7,7 +7,6 @@ defmodule Client.Application do
 
     def start(_type, _args) do
         children = [
-            {Task.Supervisor, name: Client.CoordTasks}
         ]
 
         # See https://hexdocs.pm/elixir/Supervisor.html

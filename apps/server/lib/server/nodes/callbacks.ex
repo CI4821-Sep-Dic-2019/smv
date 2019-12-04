@@ -1,5 +1,6 @@
 defmodule Server.Nodes.Callbacks do
     use GenServer, restart: :permanent
+    require Logger
     
     @doc """
     Starts the genserver.
@@ -24,50 +25,160 @@ defmodule Server.Nodes.Callbacks do
     Handle a down server.
     """
     @impl true
-    def handle_info({:nodedown, node}, {nodes, coordinator}) do
-        if coordinator == node do
-            Task.async(fn -> SA.Elections.elections() end)
-        end
-        {:noreply, {
-            List.delete(nodes, node),
-            coordinator
-        }}
+    def handle_info({:nodedown, node}, state) do
+        Logger.warn "#{node} crashed"
+        {:noreply, rm_node(node, state)}
     end
 
     @impl true
-    def handle_info(_inf, state) do
+    def handle_info(_, state) do
         {:noreply, state}
+    end
+
+    @doc """
+    Get all state.
+    """
+    @impl true
+    def handle_call(:get_state, _from, state) do
+        {:reply, state, state}
+    end
+
+    @doc """
+    Set new state
+    """
+    @impl true
+    def handle_call({:set_state, new_state}, _from, _state) do
+        {:reply, :ok, new_state}
     end
 
     @doc """
     Add a node to the list of available distributed nodes.
     """
     @impl true
-    def handle_call({:add_node, machine}, _from, {nodes, coordinator})
+    def handle_call({:add_node, machine}, _from, {nodes, central_server} = state)
     when is_atom(machine) do
+        Logger.info "Adding node #{machine}"
+
         if Enum.find(nodes, & &1 == machine) == nil do
             Node.monitor(machine, true)
+
             {:reply, :ok, {
                 [machine | nodes],
-                coordinator
+                central_server
             }}
         else
-            {:reply, :ok, {nodes, coordinator}}
+            {:reply, :ok, state}
         end
     end
 
     @impl true
-    def handle_call(:get_nodes, _from, {nodes, coordinator}) do
-        {:reply, nodes, {nodes, coordinator}}
+    def handle_call(:get_nodes, _from, state) do
+        {:reply, get_nodes(state), state}
     end
 
     @impl true
-    def handle_call({:set_coordinator, coordinator}, _from, {nodes, _coordinator}) do
-        {:reply, :ok, {nodes, coordinator}}
+    def handle_call({:set_coordinator, coordinator}, _from, state) do
+        Logger.info "#{coordinator} set as central server"
+        {servers, _} = state
+        {:reply, :ok, {servers, coordinator}}
     end
 
     @impl true
-    def handle_call(:get_coordinator, _from, {nodes, coordinator}) do
-        {:reply, coordinator, {nodes, coordinator}}
+    def handle_call(:get_coordinator, _from, state) do
+        {:reply, elem(state, 1), state}
     end
+
+    @impl true
+    def handle_call(:elections, _from, state) do
+        {_, new_coordinator} = new_state = elections(state)
+        {:reply, new_coordinator, new_state}
+    end
+
+    ###################### Private functions ###############################
+
+    defp rm_node(node, {nodes, central_server}) do
+        new_state = {
+            List.delete(nodes, node),
+            central_server
+        }
+        if node == central_server do
+            elections(new_state)
+        else
+            new_state
+        end
+    end
+
+    defp register_coordinator do
+        Task.Supervisor.async(
+            {SN.TaskSupervisor, Server.dns()},
+            SN,
+            :set_address,
+            [Node.self()]
+        )
+        |> Task.await()
+    end
+
+    defp call_elections(server) do
+        try do
+            {
+                :ok,
+                Task.Supervisor.async(
+                    {Server.CoordTasks, server},
+                    Server.Nodes,
+                    :elections,
+                    []
+                )
+            }
+        catch
+            :exit, _ -> :error
+        end
+    end
+
+    defp notify_coordinator(server, coordinator) do
+        try do
+            {
+                :ok,
+                Task.Supervisor.async(
+                    {Server.CoordTasks, server},
+                    Server.Nodes,
+                    :set_coordinator,
+                    [coordinator]
+                )
+            }
+        catch
+            :exit, _ -> :error
+        end
+    end
+
+    defp check_ok(answer) do
+        case answer do
+            {:ok, _task} -> true
+            _ -> false
+        end
+    end
+
+    defp elections({nodes, _} = state) do
+        candidates = Enum.filter(get_nodes(state), &(&1 > Node.self()))  
+
+        if Enum.empty?(candidates) do
+            Logger.info "Starting elections by #{Node.self()}"
+
+            register_coordinator()
+            Enum.filter(get_nodes(state), & &1 != Node.self())
+            |> Enum.map( &notify_coordinator(&1, Node.self()) )
+            |> Enum.map(fn 
+                {:ok, task} -> Task.await(task)
+                _ -> :error
+            end)
+
+            {nodes, Node.self()}
+        else
+            state
+        end
+    end
+
+    defp get_nodes(state) do
+        elem(state, 0)
+    end
+
 end

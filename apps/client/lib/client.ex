@@ -31,7 +31,7 @@ defmodule Client do
     when is_binary(filename) and is_integer(n) do
         central_server = get_central_server(Server.dns())
         task = Task.Supervisor.async(
-            {Client.CoordTasks, central_server},
+            {Server.CoordTasks, central_server},
             SC,
             :log,
             [filename, n]
@@ -97,7 +97,7 @@ defmodule Client do
         central_server = get_central_server(Server.dns())
         try do
             task = Task.Supervisor.async(
-                {Client.CoordTasks, central_server},
+                {Server.CoordTasks, central_server},
                 SC,
                 :commit,
                 [filename, message, content]
@@ -128,7 +128,7 @@ defmodule Client do
     when is_binary(filename) and is_integer(timestamp) do
         try do
             task = Task.Supervisor.async(
-                {Client.CoordTasks, server},
+                {Server.CoordTasks, server},
                 SA,
                 :get_file,
                 [%Server.Commit{filename: filename, timestamp: timestamp, message: ""}]
@@ -143,7 +143,7 @@ defmodule Client do
     when is_binary(filename) and is_integer(timestamp) do
         central_server = get_central_server(Server.dns())
         task = Task.Supervisor.async(
-            {Client.CoordTasks, central_server},
+            {Server.CoordTasks, central_server},
             SC,
             :checkout,
             [filename, timestamp]
@@ -155,7 +155,7 @@ defmodule Client do
     when is_binary(filename) do
         central_server = get_central_server(Server.dns())
         task = Task.Supervisor.async(
-            {Client.CoordTasks, central_server},
+            {Server.CoordTasks, central_server},
             SC,
             :update,
             [filename]
@@ -166,7 +166,7 @@ defmodule Client do
     defp get_central_server(dns, tries \\ 3)
     when is_atom(dns) and is_integer(tries) do
         task = Task.Supervisor.async(
-                {Client.CoordTasks, dns},
+                {SN.TaskSupervisor, dns},
                 SN,
                 :get_address,
                 []

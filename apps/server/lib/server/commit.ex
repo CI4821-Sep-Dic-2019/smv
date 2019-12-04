@@ -14,17 +14,17 @@ defmodule Server.Commit do
     end
 
     @doc """
-    Get all commits information to registry a new node
+    Get all state.
     """
-    def registry_node_inf(commits) do
-        Agent.get(commits, &(&1))
+    def get_state(commits \\ Server.Commit) do
+        Agent.get(commits, & &1)
     end
 
     @doc """
-    Set all commits information to registry a new node
+    Set state.
     """
-    def set_commits_inf(commits, new_inf) do
-        Agent.update(commits, fn _ -> new_inf end)
+    def set_state(commits \\ Server.Commit, new_state) do
+        Agent.update(commits, fn _ -> new_state end )
     end
 
     @doc """

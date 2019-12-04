@@ -4,6 +4,21 @@ defmodule SC do
     """
     
     @doc """
+    Registry new node
+    """
+    def register_node(new_node)
+    when is_atom(new_node) do
+        nodes = Server.Nodes.get_nodes()
+        Enum.map([new_node | nodes], &Task.Supervisor.async(
+            {Server.CoordTasks, &1},
+            Server.Nodes,
+            :add_node,
+            [new_node]
+        )) |> Enum.each(&Task.await/1)
+        {Server.Nodes.get_state(), Server.Commit.get_state()}
+    end
+
+    @doc """
     Get latest `filename`'s `commit` and the list of `servers` with it.
     """
     def update(filename)
@@ -40,7 +55,7 @@ defmodule SC do
         # filter all the failed ones.
         tasks = Enum.map(servers, fn server ->
             Task.Supervisor.async(
-                {SC.CoordTasks, server}, 
+                {Server.CoordTasks, server}, 
                 SA,
                 :store,
                 [new_commit, content])
@@ -55,7 +70,7 @@ defmodule SC do
         if length(failed_tasks) > 0 do
             Enum.map(servers, fn server ->
                 Task.Supervisor.async(
-                    {SC.CoordTasks, server},
+                    {Server.CoordTasks, server},
                     SA,
                     :remove,
                     [new_commit.filename, new_commit.timestamp])
@@ -74,7 +89,7 @@ defmodule SC do
             # Send info to each server
             Enum.map(Server.Nodes.get_nodes(), fn server ->
                 Task.Supervisor.async(
-                    {SC.CoordTasks, server},
+                    {Server.CoordTasks, server},
                     Server.Commit,
                     :add_nodes,
                     [Server.Commit, new_commit, servers]
@@ -94,40 +109,9 @@ defmodule SC do
         Server.Commit.get_latest_commits(Server.Commit, filename, n)
     end
 
-    @doc """
-    Registry new node
-    """
-    def registry_node(new_node)
-    when is_atom(new_node) do
-        nodes = Server.Nodes.get_nodes()
-        Enum.map(nodes, &add_node(&1, new_node))
-            |> Enum.map(
-                fn
-                    {:ok, task} -> Task.await(task)
-                    _ -> :error
-                end
-            )
-        {nodes, Server.Commit.registry_node_inf(Server.Commit)}
-    end
-
-    defp add_node(server, new_node) do
-        try do
-        {
-            :ok,
-            Task.Supervisor.async(
-                {SC.CoordTasks, server},
-                Server.Nodes,
-                :add_node,
-                [new_node]
-            )
-        }
-        catch
-            :exit, _ -> :error
-        end
-    end
-
     defp failed_task?(:ok), do: false
     defp failed_task?({:ok, _}), do: false
     defp failed_task?({:error, _}), do: true
+
 end
   

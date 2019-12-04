@@ -1,4 +1,5 @@
 defmodule SA do
+    require Logger
     @moduledoc """
     Storage Server or "Servidor de Almacenamiento".
     """
@@ -15,6 +16,7 @@ defmodule SA do
     """
     def store(commit, content)
     when is_binary(content) do
+        Logger.info "Storing #{get_name(commit)} in #{Node.self()}"
         with {:ok, file} <- File.open("#{path()}#{get_name(commit)}", [:write]) do
             IO.binwrite(file, content)
             File.close(file)
@@ -28,84 +30,12 @@ defmodule SA do
         File.rm("#{path()}#{filename}-#{timestamp}")
     end
 
-    @doc """
-    Registry a new server store
-    """
-    def registry(tries \\ 3)
-    when is_integer(tries) do
-        central_server = case get_central_server(Server.dns()) do
-            :noserver ->
-                become_coordinator()
-                Node.self()
-            server -> server
-        end
-        registry_inf = try_registry(central_server)
-        if  registry_inf == :error do
-            case tries do
-                0 ->
-                    IO.puts("No se pudo registrar el servidor")
-                    Process.exit(self(), :kill)
-                n -> registry(n-1)
-            end
-        else
-            {nodes, commits_inf} = registry_inf
-            Server.Commit.set_commits_inf(Server.Commit, commits_inf)
-            Server.Nodes.set_coordinator(central_server)
-            Enum.map(nodes, fn server -> Server.Nodes.add_node(server) end)
-            Server.Nodes.add_node(Node.self())
-            SA.Elections.elections()
-        end
-    end
-
     def get_name(%Server.Commit{filename: filename, timestamp: timestamp, message: _}) do
         "#{filename}-#{timestamp}"
     end
 
-    def become_coordinator do
-        task = Task.Supervisor.async(
-            {SC.CoordTasks, Server.dns()},
-            SN,
-            :set_address,
-            [Node.self()]
-        )
-        Task.await(task)
-    end
-
-    defp try_registry(central_server) do
-        try do
-            Task.Supervisor.async(
-                {SC.CoordTasks, central_server},
-                SC,
-                :registry_node,
-                [Node.self()]
-            ) |> Task.await()
-        catch
-            :exit, _ -> :error
-        end
-    end
-
-    defp get_central_server(dns, tries \\ 3)
-    when is_atom(dns) and is_integer(tries) do
-        task = Task.Supervisor.async(
-                {Client.CoordTasks, dns},
-                SN,
-                :get_address,
-                []
-            )
-        central_server = Task.await(task)
-        if Node.ping(central_server) == :pang do
-            case tries do
-                0 -> :noserver
-                n ->
-                    Process.sleep((4-n)*1000)
-                    get_central_server(dns, n-1)
-            end
-        else
-            central_server
-        end
-    end
-
     defp path() do
+        File.mkdir "files/"
         "files/"
     end
 end
