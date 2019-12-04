@@ -12,7 +12,7 @@ defmodule SNTest do
     end
 
     test "Get central server", %{central_server: central_server} do
-        assert SN.get_address(central_server) == :ok
+        assert SN.get_address(central_server) == nil
     end
 
     test "Set and Get central server", %{central_server: central_server} do

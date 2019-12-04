@@ -1,4 +1,5 @@
 defmodule SA do
+    require Logger
     @moduledoc """
     Storage Server or "Servidor de Almacenamiento".
     """
@@ -15,6 +16,7 @@ defmodule SA do
     """
     def store(commit, content)
     when is_binary(content) do
+        Logger.info "Storing #{get_name(commit)} in #{Node.self()}"
         with {:ok, file} <- File.open("#{path()}#{get_name(commit)}", [:write]) do
             IO.binwrite(file, content)
             File.close(file)
@@ -33,6 +35,7 @@ defmodule SA do
     end
 
     defp path() do
+        File.mkdir "files/"
         "files/"
     end
 end

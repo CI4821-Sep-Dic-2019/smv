@@ -1,5 +1,3 @@
 defmodule ClientTest do
-  use ExUnit.Case
-  doctest Client
-
+  use ExUnit.Case, async: true
 end

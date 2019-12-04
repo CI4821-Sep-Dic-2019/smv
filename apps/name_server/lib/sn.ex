@@ -3,6 +3,7 @@ defmodule SN do
     Name Server or "Servidor de Nombre".
     """
     use Agent, restart: :permanent
+    require Logger
 
     #TO DO: ampliar la estructura para la direccion en caso
     # que se necesiten dos argumentos
@@ -11,6 +12,7 @@ defmodule SN do
     end
 
     def set_address(central_server, address) do
+        Logger.info "Set address to #{address}"
         Agent.update(central_server, fn _ -> address end)
     end
 

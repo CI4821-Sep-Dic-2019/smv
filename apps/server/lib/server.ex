@@ -1,4 +1,5 @@
 defmodule Server do
+    require Logger
     def dns do
         Application.fetch_env!(:server, :dns)
     end
@@ -8,6 +9,7 @@ defmodule Server do
     end
 
     def init() do
+        Logger.info "Trying to add #{Node.self()} to the system"
         ## Get central server
         central_server = Task.Supervisor.async(
             {SN.TaskSupervisor, Server.dns()},
@@ -16,7 +18,13 @@ defmodule Server do
             []
             ) |> Task.await()
         
-        central_server = central_server || Server.Nodes.elections()
+        central_server = 
+            unless central_server do
+                Logger.warn "Central server not set in DNS"
+                Server.Nodes.elections()
+            else
+                central_server
+            end
 
         ## Register to the distributed system
         {nodes_state, commits_state} = Task.Supervisor.async(

@@ -1,5 +1,6 @@
 defmodule Server.Nodes.Callbacks do
     use GenServer, restart: :permanent
+    require Logger
     
     @doc """
     Starts the genserver.
@@ -24,13 +25,9 @@ defmodule Server.Nodes.Callbacks do
     Handle a down server.
     """
     @impl true
-    def handle_info({:nodedown, node}, {nodes, central_server}) do
-        new_state = {
-            List.delete(nodes, node),
-            central_server
-        }
-        new_state = elections(new_state)
-        {:noreply, new_state}
+    def handle_info({:nodedown, node}, state) do
+        Logger.warn "#{node} crashed"
+        {:noreply, rm_node(node, state)}
     end
 
     @impl true
@@ -60,6 +57,8 @@ defmodule Server.Nodes.Callbacks do
     @impl true
     def handle_call({:add_node, machine}, _from, {nodes, central_server} = state)
     when is_atom(machine) do
+        Logger.info "Adding node #{machine}"
+
         if Enum.find(nodes, & &1 == machine) == nil do
             Node.monitor(machine, true)
 
@@ -79,6 +78,7 @@ defmodule Server.Nodes.Callbacks do
 
     @impl true
     def handle_call({:set_coordinator, coordinator}, _from, state) do
+        Logger.info "#{coordinator} set as central server"
         {servers, _} = state
         {:reply, :ok, {servers, coordinator}}
     end
@@ -95,6 +95,18 @@ defmodule Server.Nodes.Callbacks do
     end
 
     ###################### Private functions ###############################
+
+    defp rm_node(node, {nodes, central_server}) do
+        new_state = {
+            List.delete(nodes, node),
+            central_server
+        }
+        if node == central_server do
+            elections(new_state)
+        else
+            new_state
+        end
+    end
 
     defp register_coordinator do
         Task.Supervisor.async(
@@ -146,12 +158,12 @@ defmodule Server.Nodes.Callbacks do
     end
 
     defp elections({nodes, _} = state) do
-        answers = Enum.filter(get_nodes(state), &(&1 > Node.self()))
-            |> Enum.map(&call_elections(&1))
+        candidates = Enum.filter(get_nodes(state), &(&1 > Node.self()))  
 
-        unless Enum.any?(answers, &(check_ok(&1))) do
+        if Enum.empty?(candidates) do
+            Logger.info "Starting elections by #{Node.self()}"
+
             register_coordinator()
-
             Enum.filter(get_nodes(state), & &1 != Node.self())
             |> Enum.map( &notify_coordinator(&1, Node.self()) )
             |> Enum.map(fn 
